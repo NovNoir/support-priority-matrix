@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Support Priority Matrix</title>
+<style>
+:root {
+  --navy: #1e2761; --ink: #1f2933; --muted: #5f6b7a; --light: #eef1f6; --amber: #f2a900;
+  --p1: #c0392b; --p2: #e67e22; --p3: #f1c40f; --p4: #7dbb6b;
+}
+* { box-sizing: border-box; }
+body { margin: 0; font-family: Calibri, "Segoe UI", system-ui, sans-serif; color: var(--ink); background: #fff; }
+header { background: var(--navy); color: #fff; padding: 2.2rem 2rem 1.8rem; }
+h1 { font-family: Cambria, Georgia, serif; font-size: 2.2rem; margin: 0 0 .5rem; }
+.lede { margin: 0; color: #cadcfc; max-width: 60ch; font-size: 1.05rem; }
+.lede strong { color: var(--amber); }
+main { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(300px, 1fr); gap: 2rem; padding: 2rem; max-width: 1200px; }
+@media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+
+.matrix-wrap { min-width: 0; }
+.table-scroll { overflow-x: auto; }
+.matrix { border-collapse: separate; border-spacing: 6px; width: 100%; }
+.matrix th { font-weight: 600; font-size: .9rem; color: var(--navy); text-align: left; padding: .25rem .4rem; }
+.matrix thead th { vertical-align: bottom; text-align: center; }
+.matrix .corner span { font-style: italic; font-weight: 400; color: var(--muted); font-size: .8rem; }
+.tier-name { display: block; }
+.tier-eg { display: block; font-weight: 400; font-size: .72rem; color: var(--muted); line-height: 1.2; margin-top: .15rem; }
+.matrix tbody th { text-align: right; white-space: nowrap; }
+.matrix td { padding: 0; }
+.cell { width: 100%; height: 64px; border: 0; border-radius: 8px; font-family: Cambria, Georgia, serif; font-size: 1.4rem; font-weight: 700;
+  color: #fff; cursor: pointer; transition: transform .1s, box-shadow .1s; }
+.cell[data-p="P1"] { background: var(--p1); }
+.cell[data-p="P2"] { background: var(--p2); }
+.cell[data-p="P3"] { background: var(--p3); color: var(--ink); }
+.cell[data-p="P4"] { background: var(--p4); }
+.cell:hover { transform: translateY(-2px); box-shadow: 0 6px 14px rgba(0,0,0,.18); }
+.cell.selected { outline: 4px solid var(--navy); outline-offset: 2px; }
+.cell:focus-visible { outline: 4px solid var(--navy); outline-offset: 2px; }
+
+.mods { margin-top: 1.6rem; border: 0; padding: 0; }
+.mods legend { font-weight: 700; color: var(--navy); margin-bottom: .5rem; }
+.mods legend small { font-weight: 400; color: var(--muted); }
+.mods label { display: flex; align-items: center; gap: .6rem; padding: .45rem .6rem; border-radius: 8px; background: var(--light); margin-bottom: .4rem; cursor: pointer; font-size: .95rem; }
+.mods label em { margin-left: auto; font-style: normal; font-size: .75rem; font-weight: 700; color: var(--navy); background: var(--amber); padding: .15rem .5rem; border-radius: 999px; white-space: nowrap; }
+
+.panel { background: var(--light); border-radius: 14px; padding: 1.5rem; align-self: start; position: sticky; top: 1rem; }
+.panel.empty .hint { color: var(--muted); font-style: italic; margin: 0; }
+.badge { display: inline-flex; align-items: center; gap: .6rem; font-family: Cambria, Georgia, serif; font-size: 2rem; font-weight: 700; color: #fff; padding: .2rem 1rem; border-radius: 10px; }
+.badge small { font-family: Calibri, sans-serif; font-size: 1rem; font-weight: 600; opacity: .9; }
+.badge.P1 { background: var(--p1); } .badge.P2 { background: var(--p2); } .badge.P3 { background: var(--p3); color: var(--ink); } .badge.P4 { background: var(--p4); }
+.panel h2 { font-family: Cambria, Georgia, serif; color: var(--navy); font-size: 1.15rem; margin: 1.2rem 0 .4rem; }
+.panel p { margin: .3rem 0; line-height: 1.45; }
+.axis { font-size: .9rem; color: var(--muted); }
+.axis b { color: var(--ink); }
+.steps { list-style: none; padding: 0; margin: 0; }
+.steps li { padding: .5rem .7rem; border-left: 4px solid var(--navy); background: #fff; border-radius: 6px; margin-bottom: .45rem; font-size: .92rem; }
+.steps li b { color: var(--navy); }
+.steps li .arrow { float: right; font-weight: 700; }
+.targets { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; font-size: .9rem; }
+.targets div { background: #fff; border-radius: 6px; padding: .5rem .7rem; }
+.targets div span { display: block; font-size: .72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+.targets .work { grid-column: 1 / -1; }
+.check { margin-top: 1.2rem; padding: .8rem; background: #fff; border-radius: 8px; font-size: .9rem; border: 1px dashed var(--navy); }
+footer { padding: 1rem 2rem 2rem; color: var(--navy); font-weight: 700; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Deciding what we fix first</h1>
+  <p class="lede">Priority is the product of <strong>scope</strong> (how many people) and
+    <strong>criticality</strong> (how important the system is). Click a cell to see the reasoning.</p>
+</header>
+
+<main>
+  <section class="matrix-wrap">
+    <div class="table-scroll">
+      <table class="matrix" aria-label="Priority matrix">
+        <thead><tr id="head-row"><th class="corner"><span>Scope &darr; &nbsp;/&nbsp; Criticality &rarr;</span></th></tr></thead>
+        <tbody id="body-rows"></tbody>
+      </table>
+    </div>
+
+    <fieldset class="mods">
+      <legend>Context modifiers <small>(each moves it one step, no further)</small></legend>
+      <div id="mod-list"></div>
+    </fieldset>
+  </section>
+
+  <aside id="panel" class="panel empty">
+    <p class="hint">Select a cell to see why it lands where it does.</p>
+  </aside>
+</main>
+
+<footer>
+  <p>A single user on a Tier&nbsp;1 system outranks a whole school on a Tier&nbsp;3 one.</p>
+</footer>
+
+<script>
+/* ------------------------------------------------------------------ *
+ * Content. Edit these to change the matrix — same shape as the
+ * constants that used to live at the top of app.py.
+ * ------------------------------------------------------------------ */
+const SCOPES = [
+  { id: "network", label: "Whole network / several schools",
+    why: "Many schools are affected at once, so the impact multiplies and there is no local fallback." },
+  { id: "school", label: "A whole school",
+    why: "Every user at one site is affected; the school's day-to-day operation is disrupted." },
+  { id: "team", label: "A team or department",
+    why: "A functional group is blocked, but the rest of the school keeps running." },
+  { id: "user", label: "A single user",
+    why: "One person is affected. Scope alone does not make this urgent — the system's criticality decides." },
+];
+
+const TIERS = [
+  { id: "t1", label: "Tier 1 · Critical",
+    examples: "SIS, email & login, network/Wi-Fi, payroll, attendance & wellbeing records",
+    why: "Teaching, safety or pay stops when this system is down. There is no acceptable workaround." },
+  { id: "t2", label: "Tier 2 · Important",
+    examples: "LMS, finance & procurement, Laserfiche Forms/Workflow, timetabling, library",
+    why: "Work slows and backlogs build, but a short-term workaround keeps people going." },
+  { id: "t3", label: "Tier 3 · Supporting",
+    examples: "Room bookings, digital signage, internal dashboards, niche departmental tools",
+    why: "Inconvenient, but people can wait or use another route without real cost." },
+];
+
+// rows = scopes (in order above), cols = tiers
+const GRID = [
+  ["P1", "P1", "P2"],
+  ["P1", "P2", "P3"],
+  ["P1", "P3", "P4"],
+  ["P2", "P4", "P4"],
+];
+
+const PRIORITIES = {
+  P1: { name: "Critical", respond: "15 min", update: "Every hour",
+        work: "Drop everything, all hands, escalate to vendor immediately." },
+  P2: { name: "High", respond: "1 hour", update: "Twice a day",
+        work: "Same-day focus; pause project work if needed." },
+  P3: { name: "Medium", respond: "4 hours", update: "At resolution",
+        work: "Next in queue; fit around planned work." },
+  P4: { name: "Low", respond: "1 business day", update: "At resolution",
+        work: "Batch with similar requests; may be scheduled." },
+};
+
+// Cell-specific reasoning: why this combination lands where it does.
+const REASONS = {
+  "network|t1": "The most severe case: a critical system is down everywhere. Rolls, attendance, pay or logins stop across the whole organisation.",
+  "network|t2": "An important system is down everywhere. Workarounds exist per site but the backlog compounds across every school, so it is treated as critical.",
+  "network|t3": "Wide but shallow. Lots of people notice, nobody is blocked. Breadth alone lifts it to P2, not P1.",
+  "school|t1":  "One site cannot operate. A whole school losing SIS, login or network is a P1 regardless of the other 17 being fine.",
+  "school|t2":  "A school is slowed but not stopped. Worth same-day attention because the workaround gets painful at school scale.",
+  "school|t3":  "Classic 'big group, low stakes'. A whole school sees the problem, but a supporting tool being down costs little. Head count does not make it urgent.",
+  "team|t1":    "A department blocked on a critical system — e.g. the office cannot access attendance or pay. Small scope, but the function that stopped is essential.",
+  "team|t2":    "A department is inconvenienced on an important system with a workaround. Genuine work, but it can wait a few hours.",
+  "team|t3":    "A team missing a convenience tool. Low priority; schedule it.",
+  "user|t1":    "One person, but on a system where their task cannot wait — the payroll officer on pay day, the receptionist doing attendance. Outranks a whole school on a Tier 3 tool.",
+  "user|t2":    "One person slowed on an important system. A workaround almost always exists; low priority unless a modifier applies.",
+  "user|t3":    "One person, supporting tool. The lowest-stakes combination on the board.",
+};
+
+const MODIFIERS = [
+  { id: "workaround", label: "A workaround exists", delta: +1,
+    why: "The person can keep working another way, so it is less urgent than it looks." },
+  { id: "deadline", label: "Hard deadline (census, reporting, enrolment cut-off)", delta: -1,
+    why: "A fixed external deadline turns a slow problem into a blocking one." },
+  { id: "security", label: "Data loss, corruption or security exposure", delta: "P1",
+    why: "Anything that risks losing or exposing data jumps the queue regardless of scope." },
+  { id: "repeat", label: "Repeat incident (third time this month)", delta: -1,
+    why: "Recurring failures indicate a problem record is needed, not another ticket." },
+];
+
+const ORDER = ["P1", "P2", "P3", "P4"];
+
+/* ------------------------------------------------------------------ *
+ * Scoring — a direct port of score() from app.py.
+ * ------------------------------------------------------------------ */
+function score(scopeId, tierId, modifierIds) {
+  const r = SCOPES.findIndex(s => s.id === scopeId);
+  const c = TIERS.findIndex(t => t.id === tierId);
+  const base = GRID[r][c];
+  const steps = [{ label: "Matrix result", priority: base, why: REASONS[scopeId + "|" + tierId] }];
+
+  let idx = ORDER.indexOf(base);
+  let forcedP1 = false;
+  for (const m of MODIFIERS) {
+    if (!modifierIds.includes(m.id)) continue;
+    if (m.delta === "P1") {
+      forcedP1 = true;
+      steps.push({ label: m.label, priority: "P1", why: m.why });
+    } else {
+      // each modifier moves one step; clamped to the P1–P4 range
+      idx = Math.max(0, Math.min(3, idx + m.delta));
+      steps.push({ label: m.label, priority: ORDER[idx], why: m.why });
+    }
+  }
+  const final = forcedP1 ? "P1" : ORDER[idx];
+  return {
+    base, final, steps,
+    scope: SCOPES[r],
+    tier: TIERS[c],
+    targets: PRIORITIES[final],
+  };
+}
+
+/* ------------------------------------------------------------------ *
+ * Rendering
+ * ------------------------------------------------------------------ */
+function esc(s) {
+  return String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+}
+
+const headRow = document.getElementById("head-row");
+for (const t of TIERS) {
+  const th = document.createElement("th");
+  th.scope = "col";
+  th.innerHTML = `<span class="tier-name">${esc(t.label)}</span><span class="tier-eg">${esc(t.examples)}</span>`;
+  headRow.appendChild(th);
+}
+
+const bodyRows = document.getElementById("body-rows");
+SCOPES.forEach((s, r) => {
+  const tr = document.createElement("tr");
+  const th = document.createElement("th");
+  th.scope = "row";
+  th.textContent = s.label;
+  tr.appendChild(th);
+  TIERS.forEach((t, c) => {
+    const td = document.createElement("td");
+    const b = document.createElement("button");
+    b.className = "cell";
+    b.dataset.scope = s.id;
+    b.dataset.tier = t.id;
+    b.dataset.p = GRID[r][c];
+    b.setAttribute("aria-label", `${s.label}, ${t.label}`);
+    b.textContent = GRID[r][c];
+    td.appendChild(b);
+    tr.appendChild(td);
+  });
+  bodyRows.appendChild(tr);
+});
+
+const modList = document.getElementById("mod-list");
+for (const m of MODIFIERS) {
+  const tag = m.delta === "P1" ? "&rarr; P1" : (m.delta > 0 ? "&#9660; lower" : "&#9650; higher");
+  const label = document.createElement("label");
+  label.innerHTML = `<input type="checkbox" name="mod" value="${esc(m.id)}">
+    <span>${esc(m.label)}</span><em>${tag}</em>`;
+  modList.appendChild(label);
+}
+
+/* ------------------------------------------------------------------ *
+ * Interaction — same behaviour as the old app.js, minus the fetch.
+ * ------------------------------------------------------------------ */
+const panel = document.getElementById("panel");
+const cells = document.querySelectorAll(".cell");
+const mods = document.querySelectorAll('input[name="mod"]');
+let selected = null;
+
+function refresh() {
+  if (!selected) return;
+  const chosen = [...mods].filter(m => m.checked).map(m => m.value);
+  const d = score(selected.dataset.scope, selected.dataset.tier, chosen);
+  const changed = d.final !== d.base;
+  panel.classList.remove("empty");
+  panel.innerHTML = `
+    <div class="badge ${d.final}">${d.final} <small>${esc(d.targets.name)}</small></div>
+    ${changed ? `<p class="axis">Matrix said <b>${d.base}</b>; modifiers moved it to <b>${d.final}</b>.</p>` : ""}
+    <h2>Why</h2>
+    <p class="axis"><b>Scope:</b> ${esc(d.scope.label)} — ${esc(d.scope.why)}</p>
+    <p class="axis"><b>Criticality:</b> ${esc(d.tier.label)} — ${esc(d.tier.why)}</p>
+    <ul class="steps">
+      ${d.steps.map(s => `<li><span class="arrow">${s.priority}</span><b>${esc(s.label)}</b><br>${esc(s.why)}</li>`).join("")}
+    </ul>
+    <h2>What ${d.final} commits us to</h2>
+    <div class="targets">
+      <div><span>Respond</span>${esc(d.targets.respond)}</div>
+      <div><span>Update people</span>${esc(d.targets.update)}</div>
+      <div class="work"><span>Work pattern</span>${esc(d.targets.work)}</div>
+    </div>
+    <div class="check"><b>Sanity check:</b> if the reasoning above doesn't match the ticket in front of you,
+      the scope or tier is probably wrong — re-check those before overriding the priority.</div>`;
+}
+
+cells.forEach(c => c.addEventListener("click", () => {
+  cells.forEach(x => x.classList.remove("selected"));
+  c.classList.add("selected");
+  selected = c;
+  refresh();
+}));
+mods.forEach(m => m.addEventListener("change", refresh));
+</script>
+</body>
+</html>
