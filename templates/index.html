@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Support Priority Matrix</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<header>
+  <h1>Deciding what we fix first</h1>
+  <p class="lede">Priority is the product of <strong>scope</strong> (how many people) and
+    <strong>criticality</strong> (how important the system is). Click a cell to see the reasoning.</p>
+</header>
+
+<main>
+  <section class="matrix-wrap">
+    <table class="matrix" aria-label="Priority matrix">
+      <thead>
+        <tr>
+          <th class="corner"><span>Scope ↓ &nbsp;/&nbsp; Criticality →</span></th>
+          {% for t in tiers %}
+          <th scope="col">
+            <span class="tier-name">{{ t.label }}</span>
+            <span class="tier-eg">{{ t.examples }}</span>
+          </th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in scopes %}
+        <tr>
+          <th scope="row">{{ s.label }}</th>
+          {% for t in tiers %}
+          <td>
+            <button class="cell"
+                    data-scope="{{ s.id }}" data-tier="{{ t.id }}"
+                    data-p="{{ grid[scopes.index(s)][tiers.index(t)] }}"
+                    aria-label="{{ s.label }}, {{ t.label }}">
+              {{ grid[scopes.index(s)][tiers.index(t)] }}
+            </button>
+          </td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <fieldset class="mods">
+      <legend>Context modifiers <small>(each moves it one step, no further)</small></legend>
+      {% for m in modifiers %}
+      <label>
+        <input type="checkbox" name="mod" value="{{ m.id }}">
+        <span>{{ m.label }}</span>
+        <em>{% if m.delta == 'P1' %}→ P1{% elif m.delta > 0 %}▼ lower{% else %}▲ higher{% endif %}</em>
+      </label>
+      {% endfor %}
+    </fieldset>
+  </section>
+
+  <aside id="panel" class="panel empty">
+    <p class="hint">Select a cell to see why it lands where it does.</p>
+  </aside>
+</main>
+
+<footer>
+  <p>A single user on a Tier&nbsp;1 system outranks a whole school on a Tier&nbsp;3 one.</p>
+</footer>
+
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
