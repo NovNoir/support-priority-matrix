@@ -15,8 +15,20 @@ header { background: var(--navy); color: #fff; padding: 2.2rem 2rem 1.8rem; }
 h1 { font-family: Cambria, Georgia, serif; font-size: 2.2rem; margin: 0 0 .5rem; }
 .lede { margin: 0; color: #cadcfc; max-width: 60ch; font-size: 1.05rem; }
 .lede strong { color: var(--amber); }
-main { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(300px, 1fr); gap: 2rem; padding: 2rem; max-width: 1200px; }
-@media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+
+/* --- tabs --------------------------------------------------------- */
+.tabs { display: flex; gap: .25rem; padding: 0 2rem; background: var(--navy); }
+.tab { appearance: none; border: 0; background: transparent; color: #cadcfc; cursor: pointer;
+  font-family: Calibri, "Segoe UI", system-ui, sans-serif; font-size: 1rem; font-weight: 600;
+  padding: .8rem 1.4rem; border-radius: 10px 10px 0 0; transition: background .15s, color .15s; }
+.tab:hover { background: rgba(255,255,255,.12); color: #fff; }
+.tab[aria-selected="true"] { background: #fff; color: var(--navy); }
+.tab:focus-visible { outline: 3px solid var(--amber); outline-offset: -3px; }
+.tabpanel[hidden] { display: none; }
+
+main { padding: 2rem; max-width: 1200px; }
+.matrix-layout { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(300px, 1fr); gap: 2rem; }
+@media (max-width: 900px) { .matrix-layout { grid-template-columns: 1fr; } }
 
 .matrix-wrap { min-width: 0; }
 .table-scroll { overflow-x: auto; }
@@ -63,6 +75,65 @@ main { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(300px, 1fr)
 .targets .work { grid-column: 1 / -1; }
 .check { margin-top: 1.2rem; padding: .8rem; background: #fff; border-radius: 8px; font-size: .9rem; border: 1px dashed var(--navy); }
 footer { padding: 1rem 2rem 2rem; color: var(--navy); font-weight: 700; }
+
+/* --- triage tab --------------------------------------------------- */
+.triage { max-width: 820px; }
+
+/* the request box: grows and reddens as answers come in */
+.req { border-radius: 14px; color: #fff; padding: 1.1rem 1.4rem; min-height: 92px;
+  display: flex; flex-direction: column; justify-content: center;
+  background: hsl(215, 72%, 42%);
+  box-shadow: 0 6px 18px rgba(0,0,0,.16);
+  transition: min-height .55s cubic-bezier(.34, 1.32, .64, 1),
+              padding .55s cubic-bezier(.34, 1.32, .64, 1),
+              background-color .55s ease,
+              box-shadow .55s ease;
+  will-change: min-height, padding, background-color; }
+.req-tag { font-size: .7rem; text-transform: uppercase; letter-spacing: .12em; opacity: .85; font-weight: 700; }
+.req-text { font-family: Cambria, Georgia, serif; font-weight: 700; margin: .35rem 0 0; line-height: 1.2;
+  font-size: 1.15rem; text-shadow: 0 1px 2px rgba(0,0,0,.25);
+  transition: font-size .55s cubic-bezier(.34, 1.32, .64, 1); }
+.req-meta { margin-top: .55rem; font-size: .85rem; font-weight: 600; opacity: .95;
+  display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
+.req-band { background: rgba(255,255,255,.22); padding: .18rem .7rem; border-radius: 999px; }
+.req.bump { animation: bump .45s cubic-bezier(.34, 1.4, .64, 1); }
+@keyframes bump { 0% { transform: scale(1); } 35% { transform: scale(1.025); } 100% { transform: scale(1); } }
+
+/* progressive question rows */
+.trow { display: grid; grid-template-rows: 0fr; opacity: 0;
+  transition: grid-template-rows .45s cubic-bezier(.4, 0, .2, 1), opacity .35s ease .1s; }
+.trow.revealed { grid-template-rows: 1fr; opacity: 1; }
+.trow-clip { overflow: hidden; min-height: 0; }
+.trow-body { border-top: 2px solid #d7dded; padding: 1.15rem 0;
+  display: grid; grid-template-columns: minmax(150px, 210px) 1fr; gap: 1.4rem; align-items: center; }
+@media (max-width: 640px) { .trow-body { grid-template-columns: 1fr; gap: .7rem; } }
+.tq { font-weight: 700; color: var(--navy); font-size: 1rem; }
+.topts { display: flex; flex-wrap: wrap; gap: .5rem; }
+.opt { appearance: none; border: 2px solid #d7dded; background: #fff; color: var(--ink);
+  font-family: Calibri, "Segoe UI", system-ui, sans-serif; font-size: .92rem; font-weight: 600;
+  padding: .5rem .9rem; border-radius: 999px; cursor: pointer;
+  transition: background .15s, border-color .15s, color .15s, transform .1s; }
+.opt:hover { border-color: var(--navy); transform: translateY(-1px); }
+.opt[aria-pressed="true"] { background: var(--navy); border-color: var(--navy); color: #fff; }
+.opt:focus-visible { outline: 3px solid var(--amber); outline-offset: 2px; }
+
+.triage-foot { margin-top: 1.4rem; display: grid; grid-template-rows: 0fr; opacity: 0;
+  transition: grid-template-rows .45s cubic-bezier(.4, 0, .2, 1), opacity .35s ease .1s; }
+.triage-foot.revealed { grid-template-rows: 1fr; opacity: 1; }
+.triage-foot-clip { overflow: hidden; min-height: 0; }
+.why-list { list-style: none; padding: 0; margin: 0 0 1rem; }
+.why-list li { background: var(--light); border-left: 4px solid var(--navy); border-radius: 6px;
+  padding: .5rem .7rem; margin-bottom: .4rem; font-size: .9rem; }
+.why-list li b { color: var(--navy); }
+.reset { appearance: none; border: 2px solid var(--navy); background: #fff; color: var(--navy);
+  font-family: Calibri, "Segoe UI", system-ui, sans-serif; font-weight: 700; font-size: .9rem;
+  padding: .5rem 1.1rem; border-radius: 999px; cursor: pointer; }
+.reset:hover { background: var(--navy); color: #fff; }
+
+@media (prefers-reduced-motion: reduce) {
+  .req, .req-text, .trow, .triage-foot { transition-duration: .01ms; }
+  .req.bump { animation: none; }
+}
 </style>
 </head>
 <body>
@@ -72,7 +143,16 @@ footer { padding: 1rem 2rem 2rem; color: var(--navy); font-weight: 700; }
     <strong>criticality</strong> (how important the system is). Click a cell to see the reasoning.</p>
 </header>
 
+<nav class="tabs" role="tablist" aria-label="Views">
+  <button class="tab" role="tab" id="tab-btn-matrix" data-tab="matrix"
+          aria-selected="true" aria-controls="panel-matrix">Matrix</button>
+  <button class="tab" role="tab" id="tab-btn-triage" data-tab="triage"
+          aria-selected="false" aria-controls="panel-triage">Triage</button>
+</nav>
+
 <main>
+<div class="tabpanel" id="panel-matrix" role="tabpanel" aria-labelledby="tab-btn-matrix">
+<div class="matrix-layout">
   <section class="matrix-wrap">
     <div class="table-scroll">
       <table class="matrix" aria-label="Priority matrix">
@@ -90,10 +170,34 @@ footer { padding: 1rem 2rem 2rem; color: var(--navy); font-weight: 700; }
   <aside id="panel" class="panel empty">
     <p class="hint">Select a cell to see why it lands where it does.</p>
   </aside>
+</div><!-- /.matrix-layout -->
+</div><!-- /#panel-matrix -->
+
+<div class="tabpanel triage" id="panel-triage" role="tabpanel" aria-labelledby="tab-btn-triage" hidden>
+  <div class="req" id="req-box">
+    <span class="req-tag">Request</span>
+    <p class="req-text" id="req-text">My program doesn't work</p>
+    <div class="req-meta">
+      <span class="req-band" id="req-band">Awaiting triage</span>
+      <span id="req-note">Answer the questions below to size this request.</span>
+    </div>
+  </div>
+
+  <div id="trows" aria-live="polite"></div>
+
+  <div class="triage-foot" id="triage-foot">
+    <div class="triage-foot-clip">
+      <div>
+        <ul class="why-list" id="why-list"></ul>
+        <button class="reset" id="reset-btn" type="button">Start again</button>
+      </div>
+    </div>
+  </div>
+</div><!-- /#panel-triage -->
 </main>
 
 <footer>
-  <p>A single user on a Tier&nbsp;1 system outranks a whole school on a Tier&nbsp;3 one.</p>
+  <p id="foot-text">A single user on a Tier&nbsp;1 system outranks a whole school on a Tier&nbsp;3 one.</p>
 </footer>
 
 <script>
@@ -289,6 +393,179 @@ cells.forEach(c => c.addEventListener("click", () => {
   refresh();
 }));
 mods.forEach(m => m.addEventListener("change", refresh));
+
+/* ================================================================== *
+ * TRIAGE TAB
+ *
+ * Each answer carries a weight. They add up, and the total drives both
+ * the colour (blue = low, red = high) and the size of the request box.
+ * Change the `w` values below to re-tune the triage — nothing else
+ * needs editing; MAX_SCORE is worked out from them automatically.
+ * ================================================================== */
+const QUESTIONS = [
+  {
+    id: "error",
+    q: "What is the error?",
+    options: [
+      { id: "complete", label: "Not working completely", w: 3,
+        why: "Nothing works, so there is no way to carry on. This is the heaviest single factor." },
+      { id: "desired", label: "Not working as desired", w: 1,
+        why: "It runs, just not the way it should. Annoying, but work continues." },
+      { id: "feature", label: "New feature", w: 0,
+        why: "Nothing is broken — this is an improvement, so it queues behind real faults." },
+    ],
+  },
+  {
+    id: "who",
+    q: "Who can fix it?",
+    options: [
+      { id: "us", label: "Us", w: 0,
+        why: "We control the fix, so work can start as soon as it reaches the front of the queue." },
+      { id: "third", label: "3rd Party", w: 1,
+        why: "A vendor adds lead time we do not control, so it has to be raised earlier to land on the same date." },
+    ],
+  },
+  {
+    id: "when",
+    q: "When do you need this by?",
+    options: [
+      { id: "now", label: "Immediately", w: 3, why: "Work is stopped right now and every hour counts." },
+      { id: "week", label: "This week", w: 2, why: "There is a real deadline, but a little room to schedule around it." },
+      { id: "month", label: "This month", w: 1, why: "Enough runway to fit this into planned work." },
+      { id: "later", label: "Later", w: 0, why: "No date pressure — this can be batched with similar requests." },
+    ],
+  },
+];
+
+// Highest reachable total, derived from the weights above.
+const MAX_SCORE = QUESTIONS.reduce((sum, q) => sum + Math.max(...q.options.map(o => o.w)), 0);
+
+const BANDS = [
+  { min: 6, name: "Critical", note: "Drop everything — this needs attention now." },
+  { min: 4, name: "High",     note: "Same-day focus; pause project work if needed." },
+  { min: 2, name: "Medium",   note: "Next in the queue; fit around planned work." },
+  { min: 0, name: "Low",      note: "Batch with similar requests; may be scheduled." },
+];
+
+const answers = {};                       // questionId -> optionId
+const reqBox   = document.getElementById("req-box");
+const reqText  = document.getElementById("req-text");
+const reqBand  = document.getElementById("req-band");
+const reqNote  = document.getElementById("req-note");
+const trows    = document.getElementById("trows");
+const triageFoot = document.getElementById("triage-foot");
+const whyList  = document.getElementById("why-list");
+
+// Build one row per question. All start hidden except the first.
+QUESTIONS.forEach((q, i) => {
+  const row = document.createElement("div");
+  row.className = "trow";
+  row.dataset.step = String(i);
+
+  const opts = q.options.map(o =>
+    `<button class="opt" type="button" data-q="${esc(q.id)}" data-o="${esc(o.id)}"
+             aria-pressed="false">${esc(o.label)}</button>`).join("");
+
+  row.innerHTML = `<div class="trow-clip"><div class="trow-body">
+      <div class="tq">${esc(q.q)}</div>
+      <div class="topts">${opts}</div>
+    </div></div>`;
+  trows.appendChild(row);
+});
+
+const rows = [...trows.querySelectorAll(".trow")];
+rows[0].classList.add("revealed");
+
+function scoreTriage() {
+  let total = 0;
+  const reasons = [];
+  for (const q of QUESTIONS) {
+    const picked = answers[q.id];
+    if (!picked) continue;
+    const o = q.options.find(x => x.id === picked);
+    total += o.w;
+    reasons.push({ q: q.q, label: o.label, why: o.why });
+  }
+  return { total, reasons };
+}
+
+function paint() {
+  const { total, reasons } = scoreTriage();
+  const answered = reasons.length;
+  const ratio = MAX_SCORE ? total / MAX_SCORE : 0;
+
+  // Colour: hue sweeps 215 (blue) down to 0 (red) as the score climbs.
+  const hue = 215 * (1 - ratio);
+  reqBox.style.backgroundColor = `hsl(${hue.toFixed(0)}, 72%, 42%)`;
+
+  // Size: the box grows with priority.
+  reqBox.style.minHeight = `${92 + ratio * 108}px`;
+  reqBox.style.padding   = `${1.1 + ratio * 0.9}rem ${1.4 + ratio * 0.6}rem`;
+  reqText.style.fontSize = `${1.15 + ratio * 1.05}rem`;
+  reqBox.style.boxShadow = `0 ${6 + ratio * 10}px ${18 + ratio * 20}px rgba(0,0,0,${(0.16 + ratio * 0.16).toFixed(2)})`;
+
+  if (answered === 0) {
+    reqBand.textContent = "Awaiting triage";
+    reqNote.textContent = "Answer the questions below to size this request.";
+  } else {
+    const band = BANDS.find(b => total >= b.min);
+    reqBand.textContent = `${band.name} · ${total}/${MAX_SCORE}`;
+    reqNote.textContent = answered < QUESTIONS.length
+      ? `${answered} of ${QUESTIONS.length} answered — keep going.`
+      : band.note;
+  }
+
+  // Little pop each time the box changes.
+  reqBox.classList.remove("bump");
+  void reqBox.offsetWidth;          // restart the animation
+  reqBox.classList.add("bump");
+
+  whyList.innerHTML = reasons.map(r =>
+    `<li><b>${esc(r.q)}</b> ${esc(r.label)}<br>${esc(r.why)}</li>`).join("");
+  triageFoot.classList.toggle("revealed", answered > 0);
+}
+
+trows.addEventListener("click", e => {
+  const btn = e.target.closest(".opt");
+  if (!btn) return;
+  const qId = btn.dataset.q;
+  answers[qId] = btn.dataset.o;
+
+  // Only one answer per question stays selected.
+  trows.querySelectorAll(`.opt[data-q="${qId}"]`)
+       .forEach(b => b.setAttribute("aria-pressed", String(b === btn)));
+
+  // Reveal the next question once this one is answered.
+  const step = QUESTIONS.findIndex(q => q.id === qId);
+  if (rows[step + 1]) rows[step + 1].classList.add("revealed");
+
+  paint();
+});
+
+document.getElementById("reset-btn").addEventListener("click", () => {
+  for (const k of Object.keys(answers)) delete answers[k];
+  trows.querySelectorAll(".opt").forEach(b => b.setAttribute("aria-pressed", "false"));
+  rows.forEach((r, i) => r.classList.toggle("revealed", i === 0));
+  paint();
+});
+
+/* ------------------------------------------------------------------ *
+ * Tabs
+ * ------------------------------------------------------------------ */
+const FOOT = {
+  matrix: "A single user on a Tier&nbsp;1 system outranks a whole school on a Tier&nbsp;3 one.",
+  triage: "Three questions, one number. The box only gets big when the answers earn it.",
+};
+const tabBtns = document.querySelectorAll(".tab");
+tabBtns.forEach(btn => btn.addEventListener("click", () => {
+  const name = btn.dataset.tab;
+  tabBtns.forEach(b => b.setAttribute("aria-selected", String(b === btn)));
+  document.getElementById("panel-matrix").hidden = name !== "matrix";
+  document.getElementById("panel-triage").hidden = name !== "triage";
+  document.getElementById("foot-text").innerHTML = FOOT[name];
+}));
+
+paint();
 </script>
 </body>
 </html>
