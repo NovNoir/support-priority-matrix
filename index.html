@@ -130,8 +130,42 @@ footer { padding: 1rem 2rem 2rem; color: var(--navy); font-weight: 700; }
   padding: .5rem 1.1rem; border-radius: 999px; cursor: pointer; }
 .reset:hover { background: var(--navy); color: #fff; }
 
+/* two-column triage: questions left, live matrix right */
+.triage-layout { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(310px, .85fr);
+  gap: 2rem; margin-top: 1.5rem; align-items: start; }
+@media (max-width: 980px) { .triage-layout { grid-template-columns: 1fr; } }
+
+.qgroup { margin-bottom: 1.5rem; }
+.qgroup[hidden] { display: none; }
+.qgroup h2 { font-family: Cambria, Georgia, serif; color: var(--navy); font-size: 1.05rem; margin: 0; }
+.qgroup .qgroup-sub { font-size: .8rem; color: var(--muted); margin: .1rem 0 .3rem; }
+
+.triage-matrix { position: sticky; top: 1rem; background: var(--light); border-radius: 14px; padding: 1.2rem; }
+.triage-matrix h2 { font-family: Cambria, Georgia, serif; color: var(--navy); font-size: 1.05rem; margin: 0 0 .1rem; }
+.triage-matrix .tm-sub { font-size: .8rem; color: var(--muted); margin: 0 0 .8rem; }
+.mini { border-collapse: separate; border-spacing: 4px; width: 100%; }
+.mini th { font-size: .7rem; font-weight: 600; color: var(--navy); padding: .15rem .25rem; }
+.mini thead th { text-align: center; vertical-align: bottom; }
+.mini tbody th { text-align: right; white-space: nowrap; font-size: .68rem; }
+.mini .corner span { font-style: italic; font-weight: 400; color: var(--muted); font-size: .62rem; }
+.mini td { padding: 0; }
+.mcell { height: 42px; border-radius: 6px; display: flex; align-items: center; justify-content: center;
+  font-family: Cambria, Georgia, serif; font-weight: 700; font-size: .95rem; color: #fff;
+  transition: opacity .4s ease, transform .4s cubic-bezier(.34, 1.32, .64, 1), box-shadow .4s ease; }
+.mcell[data-p="P1"] { background: var(--p1); }
+.mcell[data-p="P2"] { background: var(--p2); }
+.mcell[data-p="P3"] { background: var(--p3); color: var(--ink); }
+.mcell[data-p="P4"] { background: var(--p4); }
+.mini.armed .mcell { opacity: .3; }
+.mini.armed .mcell.live { opacity: 1; transform: scale(1.07);
+  box-shadow: 0 0 0 3px var(--navy), 0 6px 14px rgba(0,0,0,.28); }
+.tm-note { font-size: .84rem; color: var(--muted); margin: .9rem 0 0; line-height: 1.4; min-height: 2.4em; }
+.tm-note b { color: var(--ink); }
+.tm-shift { display: inline-block; margin-top: .5rem; font-size: .8rem; font-weight: 700;
+  color: var(--navy); background: var(--amber); padding: .15rem .6rem; border-radius: 999px; }
+
 @media (prefers-reduced-motion: reduce) {
-  .req, .req-text, .trow, .triage-foot { transition-duration: .01ms; }
+  .req, .req-text, .trow, .triage-foot, .mcell { transition-duration: .01ms; }
   .req.bump { animation: none; }
 }
 </style>
@@ -183,15 +217,36 @@ footer { padding: 1rem 2rem 2rem; color: var(--navy); font-weight: 700; }
     </div>
   </div>
 
-  <div id="trows" aria-live="polite"></div>
+  <div class="triage-layout">
+    <div class="triage-questions" aria-live="polite">
+      <section class="qgroup" id="group-customer">
+        <h2>1 &middot; Questions for Customer</h2>
+        <p class="qgroup-sub">These place the request on the matrix.</p>
+        <div id="trows-customer"></div>
+      </section>
 
-  <div class="triage-foot" id="triage-foot">
-    <div class="triage-foot-clip">
-      <div>
-        <ul class="why-list" id="why-list"></ul>
-        <button class="reset" id="reset-btn" type="button">Start again</button>
+      <section class="qgroup" id="group-apps" hidden>
+        <h2>2 &middot; Questions for Apps</h2>
+        <p class="qgroup-sub">These adjust it up or down from there.</p>
+        <div id="trows-apps"></div>
+      </section>
+
+      <div class="triage-foot" id="triage-foot">
+        <div class="triage-foot-clip">
+          <div>
+            <ul class="why-list" id="why-list"></ul>
+            <button class="reset" id="reset-btn" type="button">Start again</button>
+          </div>
+        </div>
       </div>
     </div>
+
+    <aside class="triage-matrix">
+      <h2>Where this lands</h2>
+      <p class="tm-sub">Scope &darr; / Criticality &rarr;</p>
+      <div id="mini-matrix"></div>
+      <p class="tm-note" id="tm-note">Answer the customer questions to place this on the matrix.</p>
+    </aside>
   </div>
 </div><!-- /#panel-triage -->
 </main>
@@ -402,61 +457,89 @@ mods.forEach(m => m.addEventListener("change", refresh));
  * Change the `w` values below to re-tune the triage — nothing else
  * needs editing; MAX_SCORE is worked out from them automatically.
  * ================================================================== */
+/* The two customer answers place the request on the matrix. `maps` says
+ * which axis value each answer implies — this is the guesswork: the form
+ * never asks about scope directly, so "when do you need this by" stands
+ * in for it. Swap these mappings if your triage disagrees. */
 const QUESTIONS = [
   {
-    id: "error",
-    q: "What is the error?",
+    id: "error", group: "customer", q: "What is the error?", axis: "tier",
     options: [
-      { id: "complete", label: "Not working completely", w: 3,
-        why: "Nothing works, so there is no way to carry on. This is the heaviest single factor." },
-      { id: "desired", label: "Not working as desired", w: 1,
-        why: "It runs, just not the way it should. Annoying, but work continues." },
-      { id: "feature", label: "New feature", w: 0,
-        why: "Nothing is broken — this is an improvement, so it queues behind real faults." },
+      { id: "complete", label: "Not working completely", maps: "t1",
+        why: "Nothing works, so there is no way to carry on — treated as a Tier 1 criticality." },
+      { id: "desired", label: "Not working as desired", maps: "t2",
+        why: "It runs, just not the way it should. Tier 2: a workaround usually exists." },
+      { id: "feature", label: "New feature", maps: "t3",
+        why: "Nothing is broken — an improvement, so it sits at Tier 3 behind real faults." },
     ],
   },
   {
-    id: "who",
-    q: "Who can fix it?",
+    id: "when", group: "customer", q: "When do you need this by?", axis: "scope",
     options: [
-      { id: "us", label: "Us", w: 0,
-        why: "We control the fix, so work can start as soon as it reaches the front of the queue." },
-      { id: "third", label: "3rd Party", w: 1,
-        why: "A vendor adds lead time we do not control, so it has to be raised earlier to land on the same date." },
+      { id: "now", label: "Immediately", maps: "network",
+        why: "Needed right now, so we assume the widest blast radius until told otherwise." },
+      { id: "week", label: "This week", maps: "school",
+        why: "A real deadline this week implies a site-sized group is waiting on it." },
+      { id: "month", label: "This month", maps: "team",
+        why: "Runway of weeks suggests a team or department rather than everyone." },
+      { id: "later", label: "Later", maps: "user",
+        why: "No date pressure — treated as the narrowest scope." },
     ],
   },
   {
-    id: "when",
-    q: "When do you need this by?",
+    id: "who", group: "apps", q: "Who can fix it?",
     options: [
-      { id: "now", label: "Immediately", w: 3, why: "Work is stopped right now and every hour counts." },
-      { id: "week", label: "This week", w: 2, why: "There is a real deadline, but a little room to schedule around it." },
-      { id: "month", label: "This month", w: 1, why: "Enough runway to fit this into planned work." },
-      { id: "later", label: "Later", w: 0, why: "No date pressure — this can be batched with similar requests." },
+      { id: "us", label: "Us", delta: 0,
+        why: "We control the fix, so work starts as soon as it reaches the front of the queue." },
+      { id: "third", label: "3rd Party", delta: -1,
+        why: "A vendor adds lead time we do not control, so it is raised a step to land on the same date." },
+    ],
+  },
+  {
+    id: "duration", group: "apps", q: "How long will it take to fix?",
+    options: [
+      { id: "hour",  label: "Under an hour", delta: 0,
+        why: "Quick to do, but being quick does not make it more urgent — no adjustment." },
+      { id: "hours", label: "A few hours", delta: 0, why: "Fits inside a normal working day; no adjustment." },
+      { id: "days",  label: "A few days", delta: 0, why: "Schedulable within the current sprint; no adjustment." },
+      { id: "weeks", label: "Weeks", delta: +1,
+        why: "Long enough to need planning and a slot — this is project work, not queue work." },
+    ],
+  },
+  {
+    id: "effort", group: "apps", q: "Effort to fix",
+    options: [
+      { id: "low",  label: "Low", delta: 0,
+        why: "Cheap to do, but cost to us is not the customer's urgency — no adjustment." },
+      { id: "med",  label: "Med", delta: 0,  why: "Ordinary effort; no adjustment." },
+      { id: "high", label: "High", delta: +1,
+        why: "Costly in people or risk, so it needs to be planned rather than squeezed in." },
     ],
   },
 ];
 
-// Highest reachable total, derived from the weights above.
-const MAX_SCORE = QUESTIONS.reduce((sum, q) => sum + Math.max(...q.options.map(o => o.w)), 0);
-
-const BANDS = [
-  { min: 6, name: "Critical", note: "Drop everything — this needs attention now." },
-  { min: 4, name: "High",     note: "Same-day focus; pause project work if needed." },
-  { min: 2, name: "Medium",   note: "Next in the queue; fit around planned work." },
-  { min: 0, name: "Low",      note: "Batch with similar requests; may be scheduled." },
-];
+const PRIORITY_BANDS = {
+  P1: "Drop everything — this needs attention now.",
+  P2: "Same-day focus; pause project work if needed.",
+  P3: "Next in the queue; fit around planned work.",
+  P4: "Batch with similar requests; may be scheduled.",
+};
 
 const answers = {};                       // questionId -> optionId
 const reqBox   = document.getElementById("req-box");
 const reqText  = document.getElementById("req-text");
 const reqBand  = document.getElementById("req-band");
 const reqNote  = document.getElementById("req-note");
-const trows    = document.getElementById("trows");
 const triageFoot = document.getElementById("triage-foot");
 const whyList  = document.getElementById("why-list");
+const groupApps = document.getElementById("group-apps");
+const tmNote   = document.getElementById("tm-note");
 
-// Build one row per question. All start hidden except the first.
+// Build one row per question, into its group's container.
+const GROUP_EL = {
+  customer: document.getElementById("trows-customer"),
+  apps: document.getElementById("trows-apps"),
+};
 QUESTIONS.forEach((q, i) => {
   const row = document.createElement("div");
   row.className = "trow";
@@ -470,82 +553,146 @@ QUESTIONS.forEach((q, i) => {
       <div class="tq">${esc(q.q)}</div>
       <div class="topts">${opts}</div>
     </div></div>`;
-  trows.appendChild(row);
+  GROUP_EL[q.group].appendChild(row);
 });
 
-const rows = [...trows.querySelectorAll(".trow")];
+const rows = QUESTIONS.map((q, i) =>
+  GROUP_EL[q.group].querySelector(`.trow[data-step="${i}"]`));
 rows[0].classList.add("revealed");
 
-function scoreTriage() {
-  let total = 0;
+// --- the live matrix on the right ---------------------------------
+const miniWrap = document.getElementById("mini-matrix");
+const mini = document.createElement("table");
+mini.className = "mini";
+mini.setAttribute("aria-label", "Derived matrix position");
+let head = '<thead><tr><th class="corner"><span>&nbsp;</span></th>';
+for (const t of TIERS) head += `<th scope="col">${esc(t.label.split(" · ")[0])}</th>`;
+head += "</tr></thead><tbody>";
+let body = "";
+SCOPES.forEach((s, r) => {
+  body += `<tr><th scope="row">${esc(s.label)}</th>`;
+  TIERS.forEach((t, c) => {
+    body += `<td><div class="mcell" data-p="${GRID[r][c]}" data-scope="${esc(s.id)}"
+      data-tier="${esc(t.id)}">${GRID[r][c]}</div></td>`;
+  });
+  body += "</tr>";
+});
+mini.innerHTML = head + body + "</tbody>";
+miniWrap.appendChild(mini);
+const mcells = [...mini.querySelectorAll(".mcell")];
+
+/* Customer answers -> a matrix cell. Apps answers -> a step adjustment.
+ * Returns nulls until both customer questions are in. */
+function triage() {
   const reasons = [];
+  let scopeId = null, tierId = null;
+
   for (const q of QUESTIONS) {
     const picked = answers[q.id];
     if (!picked) continue;
     const o = q.options.find(x => x.id === picked);
-    total += o.w;
-    reasons.push({ q: q.q, label: o.label, why: o.why });
+    reasons.push({ group: q.group, q: q.q, label: o.label, why: o.why });
+    if (q.axis === "scope") scopeId = o.maps;
+    if (q.axis === "tier")  tierId  = o.maps;
   }
-  return { total, reasons };
+
+  if (!scopeId || !tierId) return { reasons, base: null, final: null, shift: 0, scopeId, tierId };
+
+  const r = SCOPES.findIndex(s => s.id === scopeId);
+  const c = TIERS.findIndex(t => t.id === tierId);
+  const base = GRID[r][c];
+
+  let shift = 0;
+  for (const q of QUESTIONS) {
+    if (q.group !== "apps") continue;
+    const picked = answers[q.id];
+    if (!picked) continue;
+    shift += q.options.find(x => x.id === picked).delta;
+  }
+
+  const idx = Math.max(0, Math.min(3, ORDER.indexOf(base) + shift));
+  return { reasons, base, final: ORDER[idx], shift, scopeId, tierId };
 }
 
 function paint() {
-  const { total, reasons } = scoreTriage();
+  const { reasons, base, final, shift, scopeId, tierId } = triage();
   const answered = reasons.length;
-  const ratio = MAX_SCORE ? total / MAX_SCORE : 0;
 
-  // Colour: hue sweeps 215 (blue) down to 0 (red) as the score climbs.
+  // Priority drives everything: P1 = biggest + red, P4 = smallest + blue.
+  const ratio = final ? (3 - ORDER.indexOf(final)) / 3 : 0;
   const hue = 215 * (1 - ratio);
   reqBox.style.backgroundColor = `hsl(${hue.toFixed(0)}, 72%, 42%)`;
-
-  // Size: the box grows with priority.
   reqBox.style.minHeight = `${92 + ratio * 108}px`;
   reqBox.style.padding   = `${1.1 + ratio * 0.9}rem ${1.4 + ratio * 0.6}rem`;
   reqText.style.fontSize = `${1.15 + ratio * 1.05}rem`;
   reqBox.style.boxShadow = `0 ${6 + ratio * 10}px ${18 + ratio * 20}px rgba(0,0,0,${(0.16 + ratio * 0.16).toFixed(2)})`;
 
-  if (answered === 0) {
+  if (!final) {
     reqBand.textContent = "Awaiting triage";
-    reqNote.textContent = "Answer the questions below to size this request.";
+    reqNote.textContent = answered === 0
+      ? "Answer the customer questions to size this request."
+      : "One more customer answer needed to place this on the matrix.";
   } else {
-    const band = BANDS.find(b => total >= b.min);
-    reqBand.textContent = `${band.name} · ${total}/${MAX_SCORE}`;
-    reqNote.textContent = answered < QUESTIONS.length
-      ? `${answered} of ${QUESTIONS.length} answered — keep going.`
-      : band.note;
+    reqBand.textContent = `${final} · ${PRIORITIES[final].name}`;
+    reqNote.textContent = PRIORITY_BANDS[final];
   }
 
-  // Little pop each time the box changes.
   reqBox.classList.remove("bump");
   void reqBox.offsetWidth;          // restart the animation
   reqBox.classList.add("bump");
+
+  // Highlight the derived cell.
+  mini.classList.toggle("armed", Boolean(final));
+  mcells.forEach(el => el.classList.toggle("live",
+    Boolean(final) && el.dataset.scope === scopeId && el.dataset.tier === tierId));
+
+  if (!final) {
+    tmNote.innerHTML = "Answer the customer questions to place this on the matrix.";
+  } else {
+    const s = SCOPES.find(x => x.id === scopeId), t = TIERS.find(x => x.id === tierId);
+    const moved = final !== base;
+    tmNote.innerHTML =
+      `<b>${esc(s.label)}</b> &times; <b>${esc(t.label)}</b> &rarr; <b>${base}</b>.` +
+      (moved
+        ? `<span class="tm-shift">Apps answers moved it ${shift < 0 ? "up" : "down"} to ${final}</span>`
+        : (shift === 0 && reasons.some(x => x.group === "apps")
+            ? `<span class="tm-shift">Apps answers cancel out — stays ${final}</span>` : ""));
+  }
 
   whyList.innerHTML = reasons.map(r =>
     `<li><b>${esc(r.q)}</b> ${esc(r.label)}<br>${esc(r.why)}</li>`).join("");
   triageFoot.classList.toggle("revealed", answered > 0);
 }
 
-trows.addEventListener("click", e => {
+// Show the Apps group only once one of its rows has been revealed.
+function syncGroups() {
+  groupApps.hidden = !QUESTIONS.some((q, i) =>
+    q.group === "apps" && rows[i].classList.contains("revealed"));
+}
+
+document.querySelector(".triage-questions").addEventListener("click", e => {
   const btn = e.target.closest(".opt");
   if (!btn) return;
   const qId = btn.dataset.q;
   answers[qId] = btn.dataset.o;
 
   // Only one answer per question stays selected.
-  trows.querySelectorAll(`.opt[data-q="${qId}"]`)
-       .forEach(b => b.setAttribute("aria-pressed", String(b === btn)));
+  document.querySelectorAll(`.opt[data-q="${qId}"]`)
+          .forEach(b => b.setAttribute("aria-pressed", String(b === btn)));
 
   // Reveal the next question once this one is answered.
   const step = QUESTIONS.findIndex(q => q.id === qId);
   if (rows[step + 1]) rows[step + 1].classList.add("revealed");
 
+  syncGroups();
   paint();
 });
 
 document.getElementById("reset-btn").addEventListener("click", () => {
   for (const k of Object.keys(answers)) delete answers[k];
-  trows.querySelectorAll(".opt").forEach(b => b.setAttribute("aria-pressed", "false"));
+  document.querySelectorAll(".opt").forEach(b => b.setAttribute("aria-pressed", "false"));
   rows.forEach((r, i) => r.classList.toggle("revealed", i === 0));
+  syncGroups();
   paint();
 });
 
